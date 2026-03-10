@@ -1,0 +1,15 @@
+artifact_uri: file:///D:/Projects/ML/loanguard/mlruns/290667256342384747/64620b8d4cb042939c62fbbedea92b58/artifacts
+end_time: 1773076239590
+entry_point_name: ''
+experiment_id: '290667256342384747'
+lifecycle_stage: active
+run_id: 64620b8d4cb042939c62fbbedea92b58
+run_name: useful-chimp-158
+run_uuid: 64620b8d4cb042939c62fbbedea92b58
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1773076186593
+status: 3
+tags: []
+user_id: tuhin
