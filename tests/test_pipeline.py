@@ -91,28 +91,22 @@ def test_simulate_drift_preserves_shape():
 # ── API tests ────────────────────────────────────────────────
 
 def test_api_health_endpoint():
-    from fastapi.testclient import TestClient
-    import sys
-    sys.path.insert(0, "src")
-
-    # Only test if model exists
     if not os.path.exists("models/best_model.json"):
         pytest.skip("Model not trained yet")
 
+    from fastapi.testclient import TestClient
     from api import app
-    client = TestClient(app)
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "healthy"
+    with TestClient(app) as client:
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json()["status"] == "healthy"
 
 def test_api_predict_endpoint():
-    from fastapi.testclient import TestClient
-
     if not os.path.exists("models/best_model.json"):
         pytest.skip("Model not trained yet")
 
+    from fastapi.testclient import TestClient
     from api import app
-    client = TestClient(app)
 
     payload = {
         "AMT_INCOME_TOTAL": 135000,
@@ -134,10 +128,11 @@ def test_api_predict_endpoint():
         "FLAG_OWN_REALTY": 1
     }
 
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert "default_probability" in data
-    assert "risk_level" in data
-    assert data["risk_level"] in ["LOW", "MEDIUM", "HIGH"]
-    assert 0 <= data["default_probability"] <= 1
+    with TestClient(app) as client:
+        response = client.post("/predict", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "default_probability" in data
+        assert "risk_level" in data
+        assert data["risk_level"] in ["LOW", "MEDIUM", "HIGH"]
+        assert 0 <= data["default_probability"] <= 1

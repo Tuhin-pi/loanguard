@@ -21,14 +21,24 @@ app = FastAPI(
 MODEL_PATH = "models/best_model.json"
 model = None
 
-@app.on_event("startup")
-def load_model():
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
     global model
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
     model = xgb.XGBClassifier()
     model.load_model(MODEL_PATH)
     logger.info("✅ Model loaded successfully")
+    yield
+
+app = FastAPI(
+    title="LoanGuard API",
+    description="Loan default prediction API with ML",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 class LoanApplication(BaseModel):
     AMT_INCOME_TOTAL: float
