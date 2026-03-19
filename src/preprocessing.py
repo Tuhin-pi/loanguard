@@ -64,9 +64,18 @@ def prepare_features(df: pd.DataFrame):
     logger.info(f"Train size: {X_train.shape}, Test size: {X_test.shape}")
     return X_train, X_test, y_train, y_test
 
+def save_reference_data(X_train, y_train):
+    import os
+    os.makedirs("data/processed", exist_ok=True)
+    reference = X_train.copy()
+    reference["TARGET"] = y_train.values
+    reference.to_csv("data/processed/reference_data.csv", index=False)
+    print("✅ Reference data saved to data/processed/reference_data.csv")
+
 if __name__ == "__main__":
     from ingestion import load_data, validate_data
     df = load_data()
     validate_data(df)
     X_train, X_test, y_train, y_test = prepare_features(df)
+    save_reference_data(X_train, y_train)
     print("Features ready:", X_train.columns.tolist())

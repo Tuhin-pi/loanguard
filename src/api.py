@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import logging
 import os
+from datetime import datetime
+import csv
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,6 +66,21 @@ def engineer_features(data: dict) -> pd.DataFrame:
     
     return df
 
+def log_prediction(features: dict, prediction: float):
+    os.makedirs("data/predictions", exist_ok=True)
+    log_path = "data/predictions/prediction_log.csv"
+    
+    features["prediction"] = prediction
+    features["timestamp"] = datetime.now().isoformat()
+    
+    file_exists = os.path.exists(log_path)
+    with open(log_path, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=features.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(features)
+
+
 @app.get("/")
 def root():
     return {"message": "LoanGuard API is running", "version": "1.0.0"}
@@ -78,8 +95,12 @@ def predict(application: LoanApplication):
         raise HTTPException(status_code=503, detail="Model not loaded")
     
     try:
-        features = engineer_features(application.dict())
+        input_dict = application.dict()
+        features = engineer_features(input_dict)
         proba = model.predict_proba(features)[0][1]
+        
+        # Log prediction for drift monitoring
+        log_prediction(input_dict, float(proba))
         
         if proba < 0.3:
             risk_level = "LOW"
@@ -90,8 +111,6 @@ def predict(application: LoanApplication):
         else:
             risk_level = "HIGH"
             recommendation = "Reject — high default risk"
-        
-        logger.info(f"Prediction: {proba:.4f} | Risk: {risk_level}")
         
         return PredictionResponse(
             default_probability=round(float(proba), 4),
