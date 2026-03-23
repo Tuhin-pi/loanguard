@@ -1,8 +1,15 @@
 # 🛡️ LoanGuard — Production ML Platform
 
-> An end-to-end loan default prediction system with automated data drift detection, model retraining pipeline, FastAPI inference, and Streamlit frontend.
+> An end-to-end loan default prediction system with automated data drift detection, model retraining pipeline, FastAPI inference, Streamlit frontend, and CI/CD via GitHub Actions.
 
-![Python](https://img.shields.io/badge/Python-3.10-blue) ![XGBoost](https://img.shields.io/badge/XGBoost-1.7.6-orange) ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green) ![MLflow](https://img.shields.io/badge/MLflow-2.8-blue) ![Docker](https://img.shields.io/badge/Docker-Containerized-blue) ![Evidently](https://img.shields.io/badge/Evidently-Drift%20Detection-purple)
+![CI](https://github.com/YOUR_USERNAME/loanguard/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![XGBoost](https://img.shields.io/badge/XGBoost-1.7.6-orange)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green)
+![MLflow](https://img.shields.io/badge/MLflow-2.8-blue)
+![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
+![Evidently](https://img.shields.io/badge/Evidently-Drift%20Detection-purple)
+![Tests](https://img.shields.io/badge/Tests-10%20Passing-brightgreen)
 
 ---
 
@@ -46,10 +53,11 @@ LoanGuard is a production-grade machine learning platform that predicts whether 
 │                    │  (best_model)   │                       │
 │                    └─────────────────┘                       │
 │                                                              │
-│  ┌──────────────┐                                            │
-│  │  MLflow UI   │  Experiment tracking & model registry      │
-│  │  :5000       │                                            │
-│  └──────────────┘                                            │
+│  ┌──────────────┐    ┌──────────────────────────────────┐   │
+│  │  MLflow UI   │    │  GitHub Actions CI/CD             │   │
+│  │  :5000       │    │  → pytest (10 tests)              │   │
+│  │              │    │  → Docker build & verify          │   │
+│  └──────────────┘    └──────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -59,6 +67,9 @@ LoanGuard is a production-grade machine learning platform that predicts whether 
 
 ```
 loanguard/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # GitHub Actions CI/CD pipeline
 ├── data/
 │   ├── raw/                        # Raw CSV data (not committed)
 │   ├── processed/                  # Reference data for drift detection
@@ -71,11 +82,12 @@ loanguard/
 │   ├── evaluate.py                 # Save best model from MLflow
 │   ├── drift_detector.py           # Evidently AI drift detection
 │   ├── retrain.py                  # Auto retraining + model promotion
-│   └── api.py                      # FastAPI inference endpoint
+│   ├── api.py                      # FastAPI inference endpoint
 │   └── app.py                      # Streamlit frontend
 ├── models/
 │   └── best_model.json             # Active XGBoost model
-├── tests/                          # Unit tests
+├── tests/
+│   └── test_pipeline.py            # 10 unit tests (all passing ✅)
 ├── mlruns/                         # MLflow experiment data (auto-generated)
 ├── Dockerfile
 ├── docker-compose.yml
@@ -95,7 +107,7 @@ loanguard/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/loanguard.git
+git clone https://github.com/YOUR_USERNAME/loanguard.git
 cd loanguard
 ```
 
@@ -163,8 +175,6 @@ streamlit run src/app.py
 ```
 
 Open **http://localhost:8501** in your browser.
-
-![LoanGuard Frontend](https://via.placeholder.com/800x400?text=LoanGuard+Streamlit+Frontend)
 
 The frontend allows you to:
 - Enter applicant financial and personal details
@@ -249,13 +259,57 @@ python src/retrain.py
 **How it works:**
 
 1. Incoming predictions are logged to `data/predictions/prediction_log.csv`
-2. Evidently compares this data against the original training distribution
+2. Evidently compares this against the original training distribution
 3. If more than **20% of features** drift significantly, retraining is triggered
 4. A new XGBoost model is trained and evaluated
 5. The new model replaces the old one **only if AUC improves**
 6. All runs are logged to MLflow with a `promoted: true/false` tag
 
-**Drift reports** are saved as HTML in `data/drift_reports/` for full transparency.
+Drift reports are saved as HTML in `data/drift_reports/` for full transparency.
+
+---
+
+## ⚙️ CI/CD Pipeline
+
+Every push to `main` automatically triggers the GitHub Actions pipeline:
+
+```
+Push to main
+     │
+     ▼
+┌─────────────┐
+│  Run Tests  │  → pytest tests/ -v (10 tests)
+└──────┬──────┘
+       │ pass
+       ▼
+┌──────────────┐
+│ Docker Build │  → Build image + verify container starts
+└──────────────┘
+```
+
+**Pipeline file:** `.github/workflows/ci.yml`
+
+To run tests locally:
+
+```bash
+pytest tests/ -v
+```
+
+Expected output:
+```
+tests/test_pipeline.py::test_validate_data_passes_with_valid_df PASSED
+tests/test_pipeline.py::test_validate_data_fails_missing_column PASSED
+tests/test_pipeline.py::test_validate_data_fails_null_target PASSED
+tests/test_pipeline.py::test_clean_data_creates_new_features PASSED
+tests/test_pipeline.py::test_clean_data_fixes_employed_anomaly PASSED
+tests/test_pipeline.py::test_age_calculation_is_correct PASSED
+tests/test_pipeline.py::test_simulate_drift_changes_distribution PASSED
+tests/test_pipeline.py::test_simulate_drift_preserves_shape PASSED
+tests/test_pipeline.py::test_api_health_endpoint PASSED
+tests/test_pipeline.py::test_api_predict_endpoint PASSED
+
+✅ 10 passed
+```
 
 ---
 
@@ -272,7 +326,7 @@ Each run tracks:
 - `roc_auc` — primary model performance metric
 - `precision`, `recall`, `f1` — per-class metrics
 - All hyperparameters
-- `promoted` tag — whether the model was deployed
+- `promoted` tag — whether the model was deployed to production
 
 ---
 
@@ -286,6 +340,8 @@ Each run tracks:
 | API | FastAPI + Uvicorn |
 | Frontend | Streamlit |
 | Containerization | Docker + Docker Compose |
+| CI/CD | GitHub Actions |
+| Testing | Pytest (10 tests) |
 | Data Processing | Pandas, NumPy, Scikit-learn |
 
 ---
@@ -294,19 +350,20 @@ Each run tracks:
 
 - [x] Data ingestion & validation pipeline
 - [x] Feature engineering with domain-specific ratios
-- [x] XGBoost training with MLflow tracking
+- [x] XGBoost training with MLflow experiment tracking
 - [x] FastAPI inference endpoint
-- [x] Docker containerization
+- [x] Docker containerization with docker-compose
 - [x] Evidently AI drift detection
-- [x] Automated retraining + model promotion
-- [x] Streamlit frontend
-- [ ] AWS EC2 deployment
-- [ ] GitHub Actions CI/CD pipeline
+- [x] Automated retraining + model promotion logic
+- [x] Streamlit frontend with risk dashboard
+- [x] GitHub Actions CI/CD pipeline
+- [x] 10 unit tests — all passing
+- [ ] AWS EC2 cloud deployment
 - [ ] Grafana monitoring dashboard
 
 ---
 
 ## 👤 Author
 
-**Tuhin Maity** — AI/ML Engineer  
+**Tuhin Maity** — AI/ML Engineer
 [GitHub](https://github.com/tuhin) · [LinkedIn](https://linkedin.com/in/tuhin) · tuhin3024@gmail.com
